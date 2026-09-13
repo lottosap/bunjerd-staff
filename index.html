@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#111111" />
+  <title>Bunjerd 90's Staff Attendance</title>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <style>
+    :root {
+      --bg:#0c0c0c;
+      --card:#171717;
+      --card2:#202020;
+      --text:#f5f5f5;
+      --muted:#a4a4a4;
+      --accent:#f3b72d;
+      --ok:#67d17a;
+      --danger:#ff6464;
+      --border:#333;
+    }
+
+    * { box-sizing:border-box; }
+
+    body {
+      margin:0;
+      min-height:100vh;
+      background:linear-gradient(180deg,#111,#080808);
+      color:var(--text);
+      font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","Noto Sans Thai",Tahoma,sans-serif;
+    }
+
+    .wrap {
+      width:min(100%,520px);
+      margin:0 auto;
+      padding:22px 16px 44px;
+    }
+
+    .brand {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+      margin-bottom:18px;
+    }
+
+    .brand h1 {
+      margin:0;
+      font-size:25px;
+      font-weight:900;
+    }
+
+    .sub {
+      color:var(--muted);
+      font-size:13px;
+      margin-top:4px;
+    }
+
+    .tag {
+      background:var(--accent);
+      color:#111;
+      border-radius:999px;
+      padding:7px 10px;
+      font-size:12px;
+      font-weight:900;
+    }
+
+    .card {
+      background:var(--card);
+      border:1px solid var(--border);
+      border-radius:20px;
+      padding:18px;
+      margin-bottom:14px;
+      box-shadow:0 14px 35px rgba(0,0,0,.25);
+    }
+
+    .profile {
+      display:flex;
+      align-items:center;
+      gap:14px;
+    }
+
+    .avatar {
+      width:58px;
+      height:58px;
+      border-radius:50%;
+      object-fit:cover;
+      background:#252525;
+      border:2px solid #333;
+    }
+
+    .label {
+      color:var(--muted);
+      font-size:12px;
+      margin-bottom:5px;
+    }
+
+    .value {
+      font-size:18px;
+      font-weight:900;
+    }
+
+    .grid {
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:12px;
+    }
+
+    .mini {
+      background:var(--card2);
+      border:1px solid #2b2b2b;
+      border-radius:14px;
+      padding:14px;
+    }
+
+    .camera-box {
+      margin-top:12px;
+      min-height:220px;
+      background:#0a0a0a;
+      border:1px dashed #4c4c4c;
+      border-radius:16px;
+      overflow:hidden;
+      display:flex;
+      justify-content:center;
+      align-items:center;
+    }
+
+    #preview {
+      display:none;
+      width:100%;
+      max-height:430px;
+      object-fit:cover;
+    }
+
+    .camera-placeholder {
+      color:#8e8e8e;
+      text-align:center;
+      line-height:1.6;
+      padding:30px 14px;
+    }
+
+    .camera-placeholder .icon {
+      display:block;
+      font-size:38px;
+      margin-bottom:8px;
+    }
+
+    input[type=file] { display:none; }
+
+    .file-btn {
+      display:block;
+      margin-top:12px;
+      padding:13px;
+      text-align:center;
+      border-radius:12px;
+      background:#292929;
+      border:1px solid #414141;
+      font-weight:800;
+      cursor:pointer;
+    }
+
+    .check-btn {
+      width:100%;
+      margin-top:10px;
+      border:0;
+      border-radius:15px;
+      padding:16px;
+      background:var(--accent);
+      color:#111;
+      font-size:18px;
+      font-weight:900;
+      cursor:pointer;
+    }
+
+    .check-btn:disabled {
+      opacity:.45;
+      cursor:not-allowed;
+    }
+
+    .server {
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      margin-top:12px;
+      color:var(--muted);
+      font-size:13px;
+    }
+
+    .dot {
+      display:inline-block;
+      width:8px;
+      height:8px;
+      margin-right:6px;
+      border-radius:50%;
+      background:#666;
+    }
+
+    .dot.online { background:var(--ok); }
+
+    .status {
+      display:none;
+      margin-top:14px;
+      padding:16px;
+      border:1px solid var(--border);
+      border-radius:16px;
+      background:#101010;
+    }
+
+    .status.show { display:block; }
+    .status.ok { border-color:rgba(103,209,122,.55); }
+    .status.late,.status.error { border-color:rgba(255,100,100,.55); }
+
+    .status-title {
+      font-size:20px;
+      font-weight:900;
+      margin-bottom:12px;
+    }
+
+    .result-row {
+      display:flex;
+      justify-content:space-between;
+      gap:14px;
+      padding:8px 0;
+      border-bottom:1px solid #292929;
+    }
+
+    .result-row:last-child { border-bottom:none; }
+    .result-row span:first-child { color:var(--muted); }
+    .result-row strong { text-align:right; }
+
+    .note {
+      color:var(--muted);
+      font-size:12px;
+      line-height:1.5;
+      margin-top:10px;
+    }
+
+    .hidden { display:none !important; }
+
+    .debug {
+      margin-top:10px;
+      padding:10px;
+      border-radius:10px;
+      background:#101010;
+      color:#aaa;
+      font:12px/1.5 ui-monospace,SFMono-Regular,Menlo,monospace;
+      white-space:pre-wrap;
+      word-break:break-word;
+    }
+  </style>
+</head>
+
+<body>
+  <main class="wrap">
+    <div class="brand">
+      <div>
+        <h1>Bunjerd 90's</h1>
+        <div class="sub">Staff Attendance</div>
+      </div>
+      <div class="tag">พนักงาน</div>
+    </div>
+
+    <section class="card">
+      <div id="loadingProfile">
+        <div class="value">กำลังตรวจสอบ LINE...</div>
+        <div class="sub">กรุณารอสักครู่</div>
+      </div>
+
+      <div id="employeeProfile" class="profile hidden">
+        <img id="lineAvatar" class="avatar" alt="LINE profile" />
+        <div>
+          <div class="label">พนักงาน</div>
+          <div id="employeeName" class="value">-</div>
+          <div id="employeePosition" class="sub">-</div>
+        </div>
+      </div>
+
+      <div id="profileError" class="status error"></div>
+
+      <div class="server">
+        <span><span id="serverDot" class="dot"></span><span id="serverText">กำลังเช็กระบบ...</span></span>
+        <span>Asia/Bangkok</span>
+      </div>
+
+      <div id="debug" class="debug">Booting...</div>
+    </section>
+
+    <section class="card">
+      <div class="grid">
+        <div class="mini">
+          <div class="label">เวลาเข้างาน</div>
+          <div id="scheduledTime" class="value">-</div>
+        </div>
+        <div class="mini">
+          <div class="label">ค่าปรับมาสาย</div>
+          <div class="value">5 บาท/นาที</div>
+        </div>
+      </div>
+    </section>
+
+    <section id="attendanceCard" class="card hidden">
+      <div class="label">รูปหลักฐาน</div>
+
+      <div class="camera-box">
+        <div id="placeholder" class="camera-placeholder">
+          <span class="icon">📷</span>
+          ถ่ายรูปก่อนลงเวลา<br>
+          <small>เวอร์ชันนี้ยัง preview รูปก่อน</small>
+        </div>
+        <img id="preview" alt="รูปลงเวลา" />
+      </div>
+
+      <label class="file-btn" for="photo">📷 ถ่ายรูป / เลือกรูป</label>
+      <input id="photo" type="file" accept="image/*" capture="user" />
+
+      <button id="checkInBtn" class="check-btn" type="button" disabled>
+        ลงเวลาเข้างาน
+      </button>
+
+      <div class="note">
+        เวลาที่ใช้ตัดสินตรงเวลา/สาย มาจาก Google Apps Script ฝั่ง Server
+      </div>
+
+      <div id="statusBox" class="status">
+        <div id="statusTitle" class="status-title"></div>
+        <div id="statusBody"></div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const LIFF_ID = "2011542380-TZ4yYBwF";
+    const API_URL = "https://script.google.com/macros/s/AKfycbycYojJV4FRsI2iVrgS7qEOn_wkBMggoRB9TbmTCW2XydQTLkfhpogRol2HdNi4mWGG/exec";
+
+    let lineProfile = null;
+    let lineUserId = "";
+    let employee = null;
+
+    const debugBox = document.getElementById("debug");
+    const photoInput = document.getElementById("photo");
+    const preview = document.getElementById("preview");
+    const placeholder = document.getElementById("placeholder");
+    const checkInBtn = document.getElementById("checkInBtn");
+
+    function log(msg) {
+      debugBox.textContent += "\n" + msg;
+    }
+
+    photoInput.addEventListener("change", () => {
+      const file = photoInput.files && photoInput.files[0];
+      if (!file) return;
+
+      preview.src = URL.createObjectURL(file);
+      preview.style.display = "block";
+      placeholder.style.display = "none";
+      checkInBtn.disabled = !employee;
+    });
+
+    window.addEventListener("load", init);
+
+    async function init() {
+      debugBox.textContent = "1. HTML loaded ✅";
+
+      try {
+        if (typeof liff === "undefined") {
+          throw new Error("LIFF SDK not loaded");
+        }
+
+        log("2. LIFF SDK loaded ✅");
+
+        await liff.init({ liffId: LIFF_ID });
+        log("3. liff.init() ✅");
+
+        if (!liff.isLoggedIn()) {
+          log("4. Not logged in → redirecting to LINE Login...");
+          liff.login();
+          return;
+        }
+
+        log("4. LINE logged in ✅");
+
+        lineProfile = await liff.getProfile();
+        lineUserId = lineProfile.userId;
+
+        log("5. getProfile() ✅");
+        log("LINE User ID: " + lineUserId);
+
+        if (lineProfile.pictureUrl) {
+          document.getElementById("lineAvatar").src = lineProfile.pictureUrl;
+        }
+
+        await loadEmployee();
+
+      } catch (err) {
+        document.getElementById("loadingProfile").classList.add("hidden");
+        showProfileError("LIFF ERROR: " + (err?.message || String(err)));
+        log("ERROR ❌ " + (err?.message || String(err)));
+      }
+    }
+
+    async function api(payload) {
+      const res = await fetch(API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "text/plain;charset=utf-8"
+        },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) {
+        throw new Error("API HTTP " + res.status);
+      }
+
+      return await res.json();
+    }
+
+    async function loadEmployee() {
+      try {
+        log("6. Fetching employee...");
+
+        const result = await api({
+          action: "employee",
+          lineUserId
+        });
+
+        document.getElementById("loadingProfile").classList.add("hidden");
+
+        if (!result.success) {
+          if (result.error === "EMPLOYEE_NOT_FOUND") {
+            showProfileError(
+              "ยังไม่ได้ลงทะเบียน LINE นี้เป็นพนักงาน\nLINE User ID: " + lineUserId
+            );
+          } else {
+            showProfileError(result.message || result.error || "โหลดข้อมูลพนักงานไม่สำเร็จ");
+          }
+          return;
+        }
+
+        employee = result.employee;
+
+        document.getElementById("employeeName").textContent =
+          employee.name || lineProfile.displayName || "-";
+
+        document.getElementById("employeePosition").textContent =
+          employee.position || "พนักงาน";
+
+        document.getElementById("scheduledTime").textContent =
+          (employee.startTime || "16:00") + " น.";
+
+        document.getElementById("employeeProfile").classList.remove("hidden");
+        document.getElementById("attendanceCard").classList.remove("hidden");
+
+        document.getElementById("serverDot").classList.add("online");
+        document.getElementById("serverText").textContent = "ระบบพร้อมใช้งาน";
+
+        log("6. Employee loaded ✅");
+
+      } catch (err) {
+        document.getElementById("loadingProfile").classList.add("hidden");
+        showProfileError("เชื่อมต่อ Apps Script ไม่สำเร็จ: " + (err?.message || String(err)));
+        log("API ERROR ❌ " + (err?.message || String(err)));
+      }
+    }
+
+    checkInBtn.addEventListener("click", async () => {
+      if (!employee || !lineUserId) {
+        showError("ไม่พบข้อมูลพนักงาน");
+        return;
+      }
+
+      if (!photoInput.files || !photoInput.files[0]) {
+        showError("กรุณาถ่ายรูปก่อนลงเวลา");
+        return;
+      }
+
+      checkInBtn.disabled = true;
+      checkInBtn.textContent = "กำลังลงเวลา...";
+
+      try {
+        const result = await api({
+          action: "checkin",
+          lineUserId
+        });
+
+        if (!result.success) {
+          handleBackendError(result);
+          return;
+        }
+
+        renderSuccess(result);
+
+      } catch (err) {
+        showError(err?.message || String(err));
+      } finally {
+        checkInBtn.textContent = "ลงเวลาเข้างาน";
+      }
+    });
+
+    function renderSuccess(data) {
+      const late = data.status === "สาย";
+
+      const rows = [
+        ["พนักงาน", data.employeeName || "-"],
+        ["วันที่", data.date || "-"],
+        ["เวลาเข้า", (data.checkInTime || "-") + " น."],
+        ["เวลาเข้างาน", (data.scheduledTime || "-") + " น."],
+        ["สถานะ", data.status || "-"],
+        ["สาย", Number(data.lateMinutes || 0) + " นาที"],
+        ["ค่าปรับ", Number(data.fine || 0).toLocaleString("th-TH") + " บาท"]
+      ];
+
+      const box = document.getElementById("statusBox");
+      box.className = "status show " + (late ? "late" : "ok");
+
+      document.getElementById("statusTitle").textContent =
+        late ? "🔴 ลงเวลาสำเร็จ — มาสาย" : "✅ ลงเวลาสำเร็จ";
+
+      document.getElementById("statusBody").innerHTML = rows.map(([k,v]) => `
+        <div class="result-row">
+          <span>${escapeHtml(k)}</span>
+          <strong>${escapeHtml(v)}</strong>
+        </div>
+      `).join("");
+
+      checkInBtn.disabled = true;
+    }
+
+    function handleBackendError(data) {
+      if (data.error === "ALREADY_CHECKED_IN") {
+        showError(
+          "วันนี้ลงเวลาแล้ว เวลา " +
+          (data.checkInTime || "-") +
+          " น. (" + (data.status || "-") + ")"
+        );
+        return;
+      }
+
+      showError(data.message || data.error || "ไม่สามารถลงเวลาได้");
+    }
+
+    function showProfileError(message) {
+      const box = document.getElementById("profileError");
+      box.className = "status show error";
+      box.innerHTML =
+        '<div class="status-title">⚠️ ไม่สามารถเข้าใช้งาน</div>' +
+        '<div style="white-space:pre-wrap;line-height:1.6">' +
+        escapeHtml(message) +
+        '</div>';
+    }
+
+    function showError(message) {
+      const box = document.getElementById("statusBox");
+      box.className = "status show error";
+      document.getElementById("statusTitle").textContent = "⚠️ ไม่สามารถลงเวลาได้";
+      document.getElementById("statusBody").innerHTML =
+        '<div style="line-height:1.6">' + escapeHtml(message) + '</div>';
+    }
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&","&amp;")
+        .replaceAll("<","&lt;")
+        .replaceAll(">","&gt;")
+        .replaceAll('"',"&quot;")
+        .replaceAll("'","&#039;");
+    }
+  </script>
+</body>
+</html>
