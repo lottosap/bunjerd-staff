@@ -99,48 +99,44 @@ function log(s) {
  * This avoids CORS/redirect problems between GitHub Pages
  * and Google Apps Script ContentService.
  */
-async function api(params) {
-  const qs = new URLSearchParams({
-    ...params,
-    _t: Date.now()
-  });
+function api(params) {
+  return new Promise((resolve, reject) => {
+    const callbackName =
+      "__bunjerd_cb_" + Date.now() + "_" + Math.floor(Math.random()*100000);
 
-  const url = API_URL + "?" + qs.toString();
+    const timeout = setTimeout(() => {
+      cleanup();
+      reject(new Error("Apps Script timeout"));
+    }, 15000);
 
-  const controller = new AbortController();
-  const timeout = setTimeout(
-    () => controller.abort(),
-    30000
-  );
+    function cleanup() {
+      clearTimeout(timeout);
+      delete window[callbackName];
+      if (script.parentNode) script.parentNode.removeChild(script);
+    }
 
-  try {
-    const res = await fetch(url, {
-      method: "GET",
-      redirect: "follow",
-      cache: "no-store",
-      signal: controller.signal
+    window[callbackName] = (data) => {
+      cleanup();
+      resolve(data);
+    };
+
+    const qs = new URLSearchParams({
+      ...params,
+      callback: callbackName,
+      _t: Date.now()
     });
 
-    if (!res.ok) {
-      throw new Error(
-        "API HTTP " + res.status
-      );
-    }
+    const script = document.createElement("script");
+    script.src = API_URL + "?" + qs.toString();
+    script.async = true;
 
-    return await res.json();
+    script.onerror = () => {
+      cleanup();
+      reject(new Error("เชื่อมต่อ Apps Script ไม่สำเร็จ"));
+    };
 
-  } catch (err) {
-    if (err && err.name === "AbortError") {
-      throw new Error(
-        "Apps Script timeout"
-      );
-    }
-
-    throw err;
-
-  } finally {
-    clearTimeout(timeout);
-  }
+    document.head.appendChild(script);
+  });
 }
 
 window.addEventListener("load", init);
@@ -181,7 +177,7 @@ async function init() {
 
 async function loadEmployee() {
   try {
-    log("6. Loading employee...");
+    log("6. Loading employee via JSONP...");
 
     const r = await api({
       action:"employee",
@@ -240,8 +236,8 @@ checkinBtn.addEventListener("click", async () => {
   try {
     const imageData = await compressPhoto(
       photo.files[0],
-      1280,
-      0.78
+      960,
+      0.60
     );
 
     const requestId =
