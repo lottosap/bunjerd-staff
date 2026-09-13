@@ -61,7 +61,7 @@
     <input id="photo" type="file" accept="image/*" capture="user">
 
     <button id="checkin" disabled>ลงเวลาเข้างาน</button>
-    <div class="note">ใช้เวลา Google Apps Script Server ในการคำนวณตรงเวลา/สาย</div>
+    <div class="note">รูปจะถูกเก็บใน Google Drive และใช้เวลา Google Apps Script Server ในการคำนวณตรงเวลา/สาย</div>
 
     <div id="result" class="status">
       <div id="resultTitle" class="title"></div>
@@ -69,6 +69,14 @@
     </div>
   </section>
 </main>
+
+<iframe name="uploadFrame" id="uploadFrame" style="display:none"></iframe>
+<form id="uploadForm" method="POST" target="uploadFrame" style="display:none">
+  <input type="hidden" name="action" value="checkin_upload">
+  <input type="hidden" name="requestId" id="formRequestId">
+  <input type="hidden" name="lineUserId" id="formLineUserId">
+  <input type="hidden" name="imageData" id="formImageData">
+</form>
 
 <script>
 const LIFF_ID = "2011542380-TZ4yYBwF";
@@ -213,37 +221,194 @@ photo.addEventListener("change", () => {
 });
 
 checkinBtn.addEventListener("click", async () => {
-  if (!employee || !lineUserId) return showResultError("ไม่พบข้อมูลพนักงาน");
-  if (!photo.files || !photo.files[0]) return showResultError("กรุณาถ่ายรูปก่อนลงเวลา");
+  if (!employee || !lineUserId) {
+    return showResultError("ไม่พบข้อมูลพนักงาน");
+  }
+
+  if (!photo.files || !photo.files[0]) {
+    return showResultError("กรุณาถ่ายรูปก่อนลงเวลา");
+  }
 
   checkinBtn.disabled = true;
-  checkinBtn.textContent = "กำลังลงเวลา...";
-  log("7. Sending check-in...");
+  checkinBtn.textContent = "กำลังอัปโหลดรูป...";
+  log("7. Preparing photo...");
 
   try {
-    const r = await api({
-      action:"checkin",
-      lineUserId
-    });
+    const imageData = await compressPhoto(
+      photo.files[0],
+      1280,
+      0.78
+    );
 
-    if (!r.success) {
-      if (r.error === "ALREADY_CHECKED_IN") {
-        showResultError("วันนี้ลงเวลาแล้ว เวลา " + (r.checkInTime || "-") + " น. (" + (r.status || "-") + ")");
+    const requestId =
+      "REQ_" +
+      Date.now() +
+      "_" +
+      Math.floor(Math.random() * 1000000);
+
+    document.getElementById("formRequestId").value =
+      requestId;
+
+    document.getElementById("formLineUserId").value =
+      lineUserId;
+
+    document.getElementById("formImageData").value =
+      imageData;
+
+    const form = document.getElementById("uploadForm");
+    form.action = API_URL;
+
+    log("8. Uploading photo to Google Drive...");
+    checkinBtn.textContent = "กำลังบันทึกเวลา...";
+
+    form.submit();
+
+    const result = await pollResult(
+      requestId,
+      30,
+      1000
+    );
+
+    if (!result.success) {
+      if (result.error === "ALREADY_CHECKED_IN") {
+        showResultError(
+          "วันนี้ลงเวลาแล้ว เวลา " +
+          (result.checkInTime || "-") +
+          " น. (" +
+          (result.status || "-") +
+          ")"
+        );
       } else {
-        showResultError(r.message || r.error || "ลงเวลาไม่สำเร็จ");
+        showResultError(
+          result.message ||
+          result.error ||
+          "ลงเวลาไม่สำเร็จ"
+        );
       }
+
       return;
     }
 
-    log("7. Check-in saved ✅");
-    renderSuccess(r);
+    log("9. Photo saved ✅");
+    log("10. Check-in saved ✅");
+
+    renderSuccess(result);
+
   } catch(err) {
-    log("CHECKIN ERROR ❌ " + (err.message || String(err)));
-    showResultError(err.message || String(err));
+    log(
+      "CHECKIN ERROR ❌ " +
+      (err.message || String(err))
+    );
+
+    showResultError(
+      err.message || String(err)
+    );
   } finally {
     checkinBtn.textContent = "ลงเวลาเข้างาน";
   }
 });
+
+
+async function pollResult(
+  requestId,
+  maxAttempts,
+  delayMs
+) {
+  for (
+    let attempt = 0;
+    attempt < maxAttempts;
+    attempt++
+  ) {
+    await sleep(delayMs);
+
+    const result = await api({
+      action: "result",
+      requestId
+    });
+
+    if (!result.pending) {
+      return result;
+    }
+  }
+
+  throw new Error(
+    "หมดเวลารอ Apps Script บันทึกข้อมูล"
+  );
+}
+
+
+function sleep(ms) {
+  return new Promise(resolve =>
+    setTimeout(resolve, ms)
+  );
+}
+
+
+function compressPhoto(
+  file,
+  maxSize,
+  quality
+) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    img.onload = () => {
+      try {
+        let width = img.width;
+        let height = img.height;
+
+        const scale = Math.min(
+          1,
+          maxSize / Math.max(width, height)
+        );
+
+        width = Math.round(width * scale);
+        height = Math.round(height * scale);
+
+        const canvas =
+          document.createElement("canvas");
+
+        canvas.width = width;
+        canvas.height = height;
+
+        const ctx =
+          canvas.getContext("2d");
+
+        ctx.drawImage(
+          img,
+          0,
+          0,
+          width,
+          height
+        );
+
+        const dataUrl =
+          canvas.toDataURL(
+            "image/jpeg",
+            quality
+          );
+
+        URL.revokeObjectURL(objectUrl);
+        resolve(dataUrl);
+
+      } catch (err) {
+        URL.revokeObjectURL(objectUrl);
+        reject(err);
+      }
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(
+        new Error("อ่านรูปภาพไม่สำเร็จ")
+      );
+    };
+
+    img.src = objectUrl;
+  });
+}
+
 
 function renderSuccess(r) {
   const late = r.status === "สาย";
