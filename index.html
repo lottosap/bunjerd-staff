@@ -401,20 +401,24 @@
     }
 
     async function api(payload) {
-      const res = await fetch(API_URL, {
-        method: "POST",
-        headers: {
-          "Content-Type": "text/plain;charset=utf-8"
-        },
-        body: JSON.stringify(payload)
-      });
 
-      if (!res.ok) {
-        throw new Error("API HTTP " + res.status);
-      }
+  const params = new URLSearchParams(payload);
 
-      return await res.json();
-    }
+  params.set("_t", Date.now());
+
+  const url =
+    API_URL + "?" + params.toString();
+
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    throw new Error(
+      "API HTTP " + res.status
+    );
+  }
+
+  return await res.json();
+}
 
     async function loadEmployee() {
       try {
