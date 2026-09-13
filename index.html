@@ -61,7 +61,7 @@
     <input id="photo" type="file" accept="image/*" capture="user">
 
     <button id="checkin" disabled>ลงเวลาเข้างาน</button>
-    <div class="note">รูปจะถูกเก็บใน Google Drive และใช้เวลา Google Apps Script Server ในการคำนวณตรงเวลา/สาย</div>
+    <div class="note">เวลาอ้างอิงมาจาก TimeAPI.io และประทับลงบนรูปก่อนบันทึก Google Drive</div>
 
     <div id="result" class="status">
       <div id="resultTitle" class="title"></div>
@@ -230,42 +230,86 @@ checkinBtn.addEventListener("click", async () => {
   }
 
   checkinBtn.disabled = true;
-  checkinBtn.textContent = "กำลังอัปโหลดรูป...";
-  log("7. Preparing photo...");
+  checkinBtn.textContent = "กำลังขอเวลามาตรฐาน...";
+  log("7. Requesting trusted timestamp...");
 
   try {
-    const imageData = await compressPhoto(
-      photo.files[0],
-      960,
-      0.60
+    const prep = await api({
+      action: "prepare_checkin",
+      lineUserId
+    });
+
+    if (!prep.success) {
+      if (prep.error === "ALREADY_CHECKED_IN") {
+        showResultError(
+          "วันนี้ลงเวลาแล้ว เวลา " +
+          (prep.checkInTime || "-") +
+          " น. (" +
+          (prep.status || "-") +
+          ")"
+        );
+      } else {
+        showResultError(
+          prep.message ||
+          prep.error ||
+          "ขอเวลามาตรฐานไม่สำเร็จ"
+        );
+      }
+      return;
+    }
+
+    const p = prep.prepared;
+
+    log(
+      "8. Trusted time ✅ " +
+      p.displayDate + " " +
+      p.displayTime +
+      " [" + p.timeSource + "]"
     );
 
-    const requestId =
-      "REQ_" +
-      Date.now() +
-      "_" +
-      Math.floor(Math.random() * 1000000);
+    checkinBtn.textContent =
+      "กำลังประทับเวลาในรูป...";
+
+    const stampedImage = await stampAttendancePhoto(
+      photo.files[0],
+      employee.name,
+      p.displayDate,
+      p.displayTime,
+      p.timeSource,
+      p.status
+    );
+
+    const preview =
+      document.getElementById("preview");
+
+    preview.src = stampedImage;
+    preview.style.display = "block";
+
+    log("9. Timestamp stamped on photo ✅");
 
     document.getElementById("formRequestId").value =
-      requestId;
+      p.requestId;
 
     document.getElementById("formLineUserId").value =
       lineUserId;
 
     document.getElementById("formImageData").value =
-      imageData;
+      stampedImage;
 
-    const form = document.getElementById("uploadForm");
+    const form =
+      document.getElementById("uploadForm");
+
     form.action = API_URL;
 
-    log("8. Uploading photo to Google Drive...");
-    checkinBtn.textContent = "กำลังบันทึกเวลา...";
+    checkinBtn.textContent =
+      "กำลังบันทึกลงเวลา...";
 
+    log("10. Uploading stamped photo...");
     form.submit();
 
     const result = await pollResult(
-      requestId,
-      30,
+      p.requestId,
+      45,
       1000
     );
 
@@ -285,12 +329,11 @@ checkinBtn.addEventListener("click", async () => {
           "ลงเวลาไม่สำเร็จ"
         );
       }
-
       return;
     }
 
-    log("9. Photo saved ✅");
-    log("10. Check-in saved ✅");
+    log("11. Photo saved ✅");
+    log("12. Attendance saved ✅");
 
     renderSuccess(result);
 
@@ -332,7 +375,7 @@ async function pollResult(
   }
 
   throw new Error(
-    "หมดเวลารอ Apps Script บันทึกข้อมูล"
+    "หมดเวลารอระบบบันทึกข้อมูล"
   );
 }
 
@@ -344,27 +387,39 @@ function sleep(ms) {
 }
 
 
-function compressPhoto(
+function stampAttendancePhoto(
   file,
-  maxSize,
-  quality
+  employeeName,
+  displayDate,
+  displayTime,
+  timeSource,
+  status
 ) {
   return new Promise((resolve, reject) => {
     const img = new Image();
-    const objectUrl = URL.createObjectURL(file);
+    const objectUrl =
+      URL.createObjectURL(file);
 
     img.onload = () => {
       try {
+        const maxSize = 720;
+
         let width = img.width;
         let height = img.height;
 
         const scale = Math.min(
           1,
-          maxSize / Math.max(width, height)
+          maxSize /
+          Math.max(width, height)
         );
 
-        width = Math.round(width * scale);
-        height = Math.round(height * scale);
+        width = Math.round(
+          width * scale
+        );
+
+        height = Math.round(
+          height * scale
+        );
 
         const canvas =
           document.createElement("canvas");
@@ -383,25 +438,131 @@ function compressPhoto(
           height
         );
 
+        const overlayH = Math.max(
+          120,
+          Math.round(height * 0.24)
+        );
+
+        const top =
+          height - overlayH;
+
+        ctx.fillStyle =
+          "rgba(0,0,0,0.72)";
+
+        ctx.fillRect(
+          0,
+          top,
+          width,
+          overlayH
+        );
+
+        const pad = Math.max(
+          18,
+          Math.round(width * 0.04)
+        );
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font =
+          `700 ${Math.max(
+            16,
+            Math.round(width * 0.035)
+          )}px sans-serif`;
+
+        ctx.fillText(
+          "BUNJERD 90'S STAFF",
+          pad,
+          top + 30
+        );
+
+        ctx.font =
+          `600 ${Math.max(
+            15,
+            Math.round(width * 0.032)
+          )}px sans-serif`;
+
+        ctx.fillText(
+          employeeName,
+          pad,
+          top + 58
+        );
+
+        ctx.fillStyle = "#dddddd";
+        ctx.font =
+          `500 ${Math.max(
+            12,
+            Math.round(width * 0.025)
+          )}px sans-serif`;
+
+        ctx.fillText(
+          displayDate +
+          " • " +
+          timeSource,
+          pad,
+          top + 84
+        );
+
+        ctx.fillStyle = "#f3b72d";
+        ctx.font =
+          `800 ${Math.max(
+            24,
+            Math.round(width * 0.065)
+          )}px sans-serif`;
+
+        ctx.fillText(
+          displayTime,
+          pad,
+          height - 18
+        );
+
+        ctx.textAlign = "right";
+        ctx.fillStyle =
+          status === "สาย"
+            ? "#ff6868"
+            : "#70dc7d";
+
+        ctx.font =
+          `700 ${Math.max(
+            16,
+            Math.round(width * 0.033)
+          )}px sans-serif`;
+
+        ctx.fillText(
+          status,
+          width - pad,
+          height - 22
+        );
+
+        ctx.textAlign = "left";
+
         const dataUrl =
           canvas.toDataURL(
             "image/jpeg",
-            quality
+            0.50
           );
 
-        URL.revokeObjectURL(objectUrl);
+        URL.revokeObjectURL(
+          objectUrl
+        );
+
         resolve(dataUrl);
 
-      } catch (err) {
-        URL.revokeObjectURL(objectUrl);
+      } catch(err) {
+        URL.revokeObjectURL(
+          objectUrl
+        );
         reject(err);
       }
     };
 
     img.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
+      URL.revokeObjectURL(
+        objectUrl
+      );
+
       reject(
-        new Error("อ่านรูปภาพไม่สำเร็จ")
+        new Error(
+          "อ่านรูปภาพไม่สำเร็จ"
+        )
       );
     };
 
