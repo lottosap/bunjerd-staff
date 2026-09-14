@@ -17,6 +17,14 @@
     .camera{margin-top:12px;min-height:220px;border:1px dashed #555;border-radius:16px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#0a0a0a}#preview{display:none;width:100%;max-height:430px;object-fit:cover}.placeholder{text-align:center;color:#888}
     input[type=file]{display:none}.filebtn{display:block;margin-top:12px;background:#292929;border:1px solid #444;border-radius:12px;padding:13px;text-align:center;font-weight:800}button{width:100%;border:0;border-radius:15px;padding:16px;margin-top:10px;background:var(--accent);font-size:18px;font-weight:900}button:disabled{opacity:.45}
     .status{display:none;margin-top:14px;padding:16px;border:1px solid var(--border);border-radius:16px;background:#101010}.status.show{display:block}.status.ok{border-color:var(--ok)}.status.error,.status.late{border-color:var(--bad)}.title{font-size:20px;font-weight:900;margin-bottom:10px}.row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #292929}.row:last-child{border-bottom:0}.row span{color:var(--muted)}.debug{margin-top:12px;background:#0d0d0d;padding:10px;border-radius:10px;color:#aaa;font:12px/1.5 monospace;white-space:pre-wrap;word-break:break-word}.server{margin-top:12px;color:var(--muted);font-size:13px}
+    .mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+    .mode-btn{margin:0;background:#252525;color:#ddd;border:1px solid #3a3a3a;font-size:15px;padding:13px}
+    .mode-btn.active{background:var(--accent);color:#111;border-color:var(--accent)}
+    .field{margin-top:14px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:7px}
+    .field input,.field select,.field textarea{width:100%;background:#101010;color:#fff;border:1px solid #3b3b3b;border-radius:12px;padding:13px;font:inherit}
+    .field textarea{min-height:100px;resize:vertical}
+    .leave-result{margin-top:12px}
+
   </style>
 </head>
 <body>
@@ -47,6 +55,52 @@
     <div class="grid">
       <div class="mini"><div class="label">เวลาเข้างาน</div><div id="scheduled" class="value">-</div></div>
       <div class="mini"><div class="label">ค่าปรับมาสาย</div><div class="value">5 บาท/นาที</div></div>
+    </div>
+  </section>
+
+  <section id="workActions" class="hidden">
+    <div class="mode-switch">
+      <button id="attendanceModeBtn" class="mode-btn active" type="button">ลงเวลา</button>
+      <button id="leaveModeBtn" class="mode-btn" type="button">แจ้งลา</button>
+    </div>
+  </section>
+
+  <section id="leaveSection" class="card hidden">
+    <div class="label">คำขอลา</div>
+    <div class="value">แจ้งลา</div>
+    <div class="sub">ส่งคำขอให้แอดมินตรวจสอบ</div>
+
+    <div class="field">
+      <label for="leaveType">ประเภทการลา</label>
+      <select id="leaveType">
+        <option value="">เลือกประเภทการลา</option>
+        <option value="ลากิจ">ลากิจ</option>
+        <option value="ลาป่วย">ลาป่วย</option>
+        <option value="อื่นๆ">อื่นๆ</option>
+      </select>
+    </div>
+
+    <div class="grid">
+      <div class="field">
+        <label for="leaveStartDate">วันที่เริ่มลา</label>
+        <input id="leaveStartDate" type="date">
+      </div>
+      <div class="field">
+        <label for="leaveEndDate">ถึงวันที่</label>
+        <input id="leaveEndDate" type="date">
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="leaveReason">เหตุผล</label>
+      <textarea id="leaveReason" placeholder="ระบุเหตุผลการลา"></textarea>
+    </div>
+
+    <button id="submitLeave" type="button">ส่งคำขอลา</button>
+
+    <div id="leaveResult" class="status leave-result">
+      <div id="leaveResultTitle" class="title"></div>
+      <div id="leaveResultBody"></div>
     </div>
   </section>
 
@@ -89,6 +143,168 @@ let profile = null;
 const debug = document.getElementById("debug");
 const photo = document.getElementById("photo");
 const checkinBtn = document.getElementById("checkin");
+const attendanceModeBtn = document.getElementById("attendanceModeBtn");
+const leaveModeBtn = document.getElementById("leaveModeBtn");
+const leaveSection = document.getElementById("leaveSection");
+const attendanceSection = document.getElementById("attendance");
+const submitLeaveBtn = document.getElementById("submitLeave");
+
+attendanceModeBtn.addEventListener("click", () => {
+  attendanceModeBtn.classList.add("active");
+  leaveModeBtn.classList.remove("active");
+  attendanceSection.classList.remove("hidden");
+  leaveSection.classList.add("hidden");
+});
+
+leaveModeBtn.addEventListener("click", () => {
+  leaveModeBtn.classList.add("active");
+  attendanceModeBtn.classList.remove("active");
+  leaveSection.classList.remove("hidden");
+  attendanceSection.classList.add("hidden");
+  setDefaultLeaveDates();
+});
+
+function setDefaultLeaveDates() {
+  const start = document.getElementById("leaveStartDate");
+  const end = document.getElementById("leaveEndDate");
+
+  if (!start.value) {
+    const today = new Date();
+    const local = new Date(
+      today.getTime() -
+      today.getTimezoneOffset() * 60000
+    ).toISOString().slice(0,10);
+
+    start.value = local;
+    end.value = local;
+  }
+}
+
+submitLeaveBtn.addEventListener("click", async () => {
+  if (!employee || !lineUserId) {
+    return showLeaveResult(false, "ไม่พบข้อมูลพนักงาน");
+  }
+
+  const leaveType = document.getElementById("leaveType").value;
+  const startDate = document.getElementById("leaveStartDate").value;
+  const endDate = document.getElementById("leaveEndDate").value;
+  const reason = document.getElementById("leaveReason").value.trim();
+
+  if (!leaveType) {
+    return showLeaveResult(false, "กรุณาเลือกประเภทการลา");
+  }
+
+  if (!startDate || !endDate) {
+    return showLeaveResult(false, "กรุณาเลือกวันที่ลา");
+  }
+
+  if (startDate > endDate) {
+    return showLeaveResult(false, "วันที่สิ้นสุดต้องไม่น้อยกว่าวันเริ่มลา");
+  }
+
+  if (!reason) {
+    return showLeaveResult(false, "กรุณาระบุเหตุผลการลา");
+  }
+
+  submitLeaveBtn.disabled = true;
+  submitLeaveBtn.textContent = "กำลังส่งคำขอ...";
+
+  try {
+    const result = await api({
+      action: "leave_request",
+      lineUserId,
+      leaveType,
+      startDate,
+      endDate,
+      reason
+    });
+
+    if (!result.success) {
+      showLeaveResult(
+        false,
+        result.message || result.error || "ส่งคำขอลาไม่สำเร็จ"
+      );
+      return;
+    }
+
+    showLeaveResult(
+      true,
+      "ส่งคำขอลาแล้ว",
+      [
+        ["ประเภท", result.leaveType || leaveType],
+        ["วันที่", formatLeaveDateRange(startDate, endDate)],
+        ["สถานะ", result.status || "รออนุมัติ"]
+      ]
+    );
+
+    document.getElementById("leaveType").value = "";
+    document.getElementById("leaveReason").value = "";
+
+  } catch (err) {
+    showLeaveResult(
+      false,
+      err.message || String(err)
+    );
+  } finally {
+    submitLeaveBtn.disabled = false;
+    submitLeaveBtn.textContent = "ส่งคำขอลา";
+  }
+});
+
+function showLeaveResult(success, message, rows) {
+  const box = document.getElementById("leaveResult");
+  const title = document.getElementById("leaveResultTitle");
+  const body = document.getElementById("leaveResultBody");
+
+  box.className = "status show " + (success ? "ok" : "error");
+  title.textContent = success ? "ส่งคำขอลาแล้ว" : "เกิดข้อผิดพลาด";
+
+  if (!rows || !rows.length) {
+    body.innerHTML = "<div class='sub'>" + escapeHtml(message || "") + "</div>";
+    return;
+  }
+
+  body.innerHTML =
+    "<div class='sub' style='margin-bottom:8px'>" +
+    escapeHtml(message || "") +
+    "</div>" +
+    rows.map(r =>
+      "<div class='row'><span>" +
+      escapeHtml(r[0]) +
+      "</span><strong>" +
+      escapeHtml(r[1]) +
+      "</strong></div>"
+    ).join("");
+}
+
+function formatLeaveDateRange(startDate, endDate) {
+  if (startDate === endDate) return formatThaiDateShort(startDate);
+  return formatThaiDateShort(startDate) + " - " + formatThaiDateShort(endDate);
+}
+
+function formatThaiDateShort(iso) {
+  const m = String(iso || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!m) return iso || "-";
+
+  const months = [
+    "", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+    "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+  ];
+
+  return Number(m[3]) + " " +
+    months[Number(m[2])] + " " +
+    String(Number(m[1]) + 543).slice(-2);
+}
+
+function escapeHtml(value) {
+  return String(value ?? "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#039;");
+}
+
 
 function log(s) {
   debug.textContent += "\n" + s;
@@ -201,6 +417,7 @@ async function loadEmployee() {
     document.getElementById("position").textContent = employee.position || "พนักงาน";
     document.getElementById("scheduled").textContent = (employee.startTime || "16:00") + " น.";
     document.getElementById("profile").classList.remove("hidden");
+    document.getElementById("workActions").classList.remove("hidden");
     document.getElementById("attendance").classList.remove("hidden");
     document.getElementById("serverText").textContent = "ระบบพร้อมใช้งาน";
     log("6. Employee loaded ✅");
