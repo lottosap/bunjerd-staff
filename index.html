@@ -1,6 +1,10 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!-- BUNJERD_DIRECT_IFRAME_V1 -->
+  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
+  <!-- BUNJERD_LEAVE_APPROVAL_V1 -->
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <meta name="theme-color" content="#111111">
@@ -115,7 +119,7 @@
     <input id="photo" type="file" accept="image/*" capture="user">
 
     <button id="checkin" disabled>ลงเวลาเข้างาน</button>
-    <div class="note">เวลาอ้างอิงมาจาก TimeAPI.io และประทับลงบนรูปก่อนบันทึก Google Drive</div>
+    <div class="note">เวลาอ้างอิงจากเซิร์ฟเวอร์ระบบ และประทับลงบนรูปก่อนบันทึก Google Drive</div>
 
     <div id="result" class="status">
       <div id="resultTitle" class="title"></div>
@@ -352,8 +356,8 @@ function api(params) {
 
     const timeout = setTimeout(() => {
       cleanup();
-      reject(new Error("Apps Script timeout"));
-    }, 15000);
+      reject(new Error("ระบบใช้เวลานานกว่าปกติ กรุณาลองอีกครั้ง"));
+    }, 25000);
 
     function cleanup() {
       clearTimeout(timeout);
@@ -470,16 +474,27 @@ photo.addEventListener("change", () => {
 
 checkinBtn.addEventListener("click", async () => {
   if (!employee || !lineUserId) {
-    return showResultError("ไม่พบข้อมูลพนักงาน");
+    return showResultError(
+      "ไม่พบข้อมูลพนักงาน"
+    );
   }
 
-  if (!photo.files || !photo.files[0]) {
-    return showResultError("กรุณาถ่ายรูปก่อนลงเวลา");
+  if (
+    !photo.files ||
+    !photo.files[0]
+  ) {
+    return showResultError(
+      "กรุณาถ่ายรูปก่อนลงเวลา"
+    );
   }
 
   checkinBtn.disabled = true;
-  checkinBtn.textContent = "กำลังขอเวลามาตรฐาน...";
-  log("7. Requesting trusted timestamp...");
+  checkinBtn.textContent =
+    "กำลังขอเวลามาตรฐาน...";
+
+  log(
+    "7. Requesting server timestamp..."
+  );
 
   try {
     const prep = await api({
@@ -488,7 +503,10 @@ checkinBtn.addEventListener("click", async () => {
     });
 
     if (!prep.success) {
-      if (prep.error === "ALREADY_CHECKED_IN") {
+      if (
+        prep.error ===
+        "ALREADY_CHECKED_IN"
+      ) {
         showResultError(
           "วันนี้ลงเวลาแล้ว เวลา " +
           (prep.checkInTime || "-") +
@@ -503,66 +521,105 @@ checkinBtn.addEventListener("click", async () => {
           "ขอเวลามาตรฐานไม่สำเร็จ"
         );
       }
+
       return;
     }
 
-    const p = prep.prepared;
+    const p =
+      prep.prepared;
 
     log(
-      "8. Trusted time ✅ " +
-      p.displayDate + " " +
+      "8. Server time ✅ " +
+      p.displayDate +
+      " " +
       p.displayTime +
-      " [" + p.timeSource + "]"
+      " [" +
+      p.timeSource +
+      "]"
     );
 
     checkinBtn.textContent =
       "กำลังประทับเวลาในรูป...";
 
-    const stampedImage = await stampAttendancePhoto(
-      photo.files[0],
-      employee.name,
-      p.displayDate,
-      p.displayTime,
-      p.timeSource,
-      p.status
-    );
+    const stampedImage =
+      await stampAttendancePhoto(
+        photo.files[0],
+        employee.name,
+        p.displayDate,
+        p.displayTime,
+        p.timeSource,
+        p.status
+      );
 
     const preview =
-      document.getElementById("preview");
+      document.getElementById(
+        "preview"
+      );
 
-    preview.src = stampedImage;
-    preview.style.display = "block";
-
-    log("9. Timestamp stamped on photo ✅");
-
-    document.getElementById("formRequestId").value =
-      p.requestId;
-
-    document.getElementById("formLineUserId").value =
-      lineUserId;
-
-    document.getElementById("formImageData").value =
+    preview.src =
       stampedImage;
 
-    const form =
-      document.getElementById("uploadForm");
+    preview.style.display =
+      "block";
 
-    form.action = API_URL;
+    log(
+      "9. Timestamp stamped on photo ✅"
+    );
+
+    document
+      .getElementById(
+        "formRequestId"
+      )
+      .value =
+        p.requestId;
+
+    document
+      .getElementById(
+        "formLineUserId"
+      )
+      .value =
+        lineUserId;
+
+    document
+      .getElementById(
+        "formImageData"
+      )
+      .value =
+        stampedImage;
+
+    const form =
+      document.getElementById(
+        "uploadForm"
+      );
+
+    form.action =
+      API_URL;
 
     checkinBtn.textContent =
       "กำลังบันทึกลงเวลา...";
 
-    log("10. Uploading stamped photo...");
-    form.submit();
-
-    const result = await pollResult(
-      p.requestId,
-      45,
-      1000
+    log(
+      "10. Uploading stamped photo..."
     );
 
+    // Register listener before submit so a fast response is never missed.
+    const responsePromise =
+      waitForCheckinResponse(
+        p.requestId,
+        45000
+      );
+
+    form.submit();
+
+    // One upload request only. No result polling.
+    const result =
+      await responsePromise;
+
     if (!result.success) {
-      if (result.error === "ALREADY_CHECKED_IN") {
+      if (
+        result.error ===
+        "ALREADY_CHECKED_IN"
+      ) {
         showResultError(
           "วันนี้ลงเวลาแล้ว เวลา " +
           (result.checkInTime || "-") +
@@ -570,6 +627,17 @@ checkinBtn.addEventListener("click", async () => {
           (result.status || "-") +
           ")"
         );
+
+      } else if (
+        result.message ===
+          "SYSTEM_BUSY_PLEASE_RETRY" ||
+        result.error ===
+          "SYSTEM_BUSY_PLEASE_RETRY"
+      ) {
+        showResultError(
+          "มีพนักงานกำลังลงเวลาพร้อมกัน กรุณาลองอีกครั้ง"
+        );
+
       } else {
         showResultError(
           result.message ||
@@ -577,60 +645,130 @@ checkinBtn.addEventListener("click", async () => {
           "ลงเวลาไม่สำเร็จ"
         );
       }
+
       return;
     }
 
-    log("11. Photo saved ✅");
-    log("12. Attendance saved ✅");
+    log(
+      "11. Photo saved ✅"
+    );
 
-    renderSuccess(result);
+    log(
+      "12. Attendance saved ✅"
+    );
 
-  } catch(err) {
+    renderSuccess(
+      result
+    );
+
+  } catch (err) {
     log(
       "CHECKIN ERROR ❌ " +
-      (err.message || String(err))
+      (
+        err.message ||
+        String(err)
+      )
     );
 
     showResultError(
-      err.message || String(err)
+      err.message ||
+      String(err)
     );
+
   } finally {
-    checkinBtn.textContent = "ลงเวลาเข้างาน";
+    checkinBtn.disabled = false;
+    checkinBtn.textContent =
+      "ลงเวลาเข้างาน";
   }
 });
 
 
-async function pollResult(
+function waitForCheckinResponse(
   requestId,
-  maxAttempts,
-  delayMs
+  timeoutMs
 ) {
-  for (
-    let attempt = 0;
-    attempt < maxAttempts;
-    attempt++
-  ) {
-    await sleep(delayMs);
+  return new Promise(
+    (resolve, reject) => {
+      let finished = false;
 
-    const result = await api({
-      action: "result",
-      requestId
-    });
+      const timer =
+        setTimeout(() => {
+          cleanup();
 
-    if (!result.pending) {
-      return result;
+          reject(
+            new Error(
+              "ระบบใช้เวลานานกว่าปกติ กรุณาตรวจสอบ Attendance ก่อนลองลงเวลาใหม่"
+            )
+          );
+        }, timeoutMs);
+
+      function cleanup() {
+        if (finished) {
+          return;
+        }
+
+        finished = true;
+
+        clearTimeout(timer);
+
+        window.removeEventListener(
+          "message",
+          onMessage
+        );
+      }
+
+      function onMessage(event) {
+        const data =
+          event.data;
+
+        if (
+          !data ||
+          data.type !==
+            "BUNJERD_CHECKIN_RESULT"
+        ) {
+          return;
+        }
+
+        if (
+          String(data.requestId || "") !==
+          String(requestId || "")
+        ) {
+          return;
+        }
+
+        const origin =
+          String(event.origin || "");
+
+        const googleOrigin =
+          origin ===
+            "https://script.google.com" ||
+          origin.endsWith(
+            ".googleusercontent.com"
+          );
+
+        if (
+          origin &&
+          !googleOrigin
+        ) {
+          return;
+        }
+
+        cleanup();
+
+        resolve(
+          data.result || {
+            success: false,
+            error:
+              "EMPTY_CHECKIN_RESULT"
+          }
+        );
+      }
+
+      window.addEventListener(
+        "message",
+        onMessage
+      );
     }
-  }
-
-  throw new Error(
-    "หมดเวลารอระบบบันทึกข้อมูล"
-  );
-}
-
-
-function sleep(ms) {
-  return new Promise(resolve =>
-    setTimeout(resolve, ms)
   );
 }
 
