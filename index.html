@@ -607,7 +607,7 @@ checkinBtn.addEventListener("click", async () => {
     const responsePromise =
       waitForCheckinResponse(
         p.requestId,
-        45000
+        15000
       );
 
     form.submit();
@@ -693,14 +693,26 @@ function waitForCheckinResponse(
       let finished = false;
 
       const timer =
-        setTimeout(() => {
+        setTimeout(async () => {
           cleanup();
 
-          reject(
-            new Error(
-              "ระบบใช้เวลานานกว่าปกติ กรุณาตรวจสอบ Attendance ก่อนลองลงเวลาใหม่"
-            )
-          );
+          try {
+            const recovered =
+              await recoverCheckinResult(
+                requestId
+              );
+
+            resolve(
+              recovered
+            );
+
+          } catch (recoveryErr) {
+            reject(
+              new Error(
+                "ระบบบันทึกผลแล้วแต่หน้าไม่ตอบกลับ กรุณาตรวจสอบ Attendance ก่อนลองใหม่"
+              )
+            );
+          }
         }, timeoutMs);
 
       function cleanup() {
@@ -710,7 +722,9 @@ function waitForCheckinResponse(
 
         finished = true;
 
-        clearTimeout(timer);
+        clearTimeout(
+          timer
+        );
 
         window.removeEventListener(
           "message",
@@ -731,14 +745,20 @@ function waitForCheckinResponse(
         }
 
         if (
-          String(data.requestId || "") !==
-          String(requestId || "")
+          String(
+            data.requestId || ""
+          ) !==
+          String(
+            requestId || ""
+          )
         ) {
           return;
         }
 
         const origin =
-          String(event.origin || "");
+          String(
+            event.origin || ""
+          );
 
         const apiOrigin =
           new URL(
@@ -746,6 +766,8 @@ function waitForCheckinResponse(
           ).origin;
 
         const allowedOrigin =
+          !origin ||
+          origin === "null" ||
           origin === apiOrigin ||
           origin ===
             "https://script.google.com" ||
@@ -753,10 +775,7 @@ function waitForCheckinResponse(
             ".googleusercontent.com"
           );
 
-        if (
-          origin &&
-          !allowedOrigin
-        ) {
+        if (!allowedOrigin) {
           return;
         }
 
@@ -776,6 +795,55 @@ function waitForCheckinResponse(
         onMessage
       );
     }
+  );
+}
+
+
+async function recoverCheckinResult(
+  requestId
+) {
+  // Recovery only when postMessage was not received.
+  // Maximum two lightweight reads; this is not continuous polling.
+  for (
+    let attempt = 0;
+    attempt < 2;
+    attempt++
+  ) {
+    try {
+      const result =
+        await api({
+          action: "result",
+          requestId
+        });
+
+      if (
+        result &&
+        !result.pending
+      ) {
+        return result;
+      }
+
+    } catch (err) {
+      log(
+        "Recovery attempt " +
+        (attempt + 1) +
+        " failed"
+      );
+    }
+
+    if (attempt === 0) {
+      await new Promise(
+        resolve =>
+          setTimeout(
+            resolve,
+            1800
+          )
+      );
+    }
+  }
+
+  throw new Error(
+    "CHECKIN_RESULT_NOT_AVAILABLE"
   );
 }
 
