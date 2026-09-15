@@ -48,13 +48,13 @@
 
     <div id="profileError" class="status error"></div>
     <div class="server" id="serverText">กำลังเช็กระบบ...</div>
-    <div id="debug" class="debug">Booting...</div>
+    <div id="debug" class="debug hidden">Booting...</div>
   </section>
 
   <section class="card">
-    <div class="grid">
-      <div class="mini"><div class="label">เวลาเข้างาน</div><div id="scheduled" class="value">-</div></div>
-      <div class="mini"><div class="label">ค่าปรับมาสาย</div><div class="value">5 บาท/นาที</div></div>
+    <div class="mini">
+      <div class="label">เวลาเข้างาน</div>
+      <div id="scheduled" class="value">-</div>
     </div>
   </section>
 
@@ -135,6 +135,36 @@
 <script>
 const LIFF_ID = "2011542380-TZ4yYBwF";
 const API_URL = "https://script.google.com/macros/s/AKfycbySzi-Zcyq_lObT5DvZfqNQBb1AW3bVc0BeMwv15snK5bSkEnDLiFnuYBpxQMvQQc0h/exec";
+const pageMode =
+  new URLSearchParams(window.location.search).get("mode") || "attendance";
+
+function applyPageMode() {
+  const attendanceBtn = document.getElementById("attendanceModeBtn");
+  const leaveBtn = document.getElementById("leaveModeBtn");
+  const attendance = document.getElementById("attendance");
+  const leave = document.getElementById("leaveSection");
+
+  if (!attendance || !leave) return;
+
+  if (pageMode === "leave") {
+    attendance.classList.add("hidden");
+    leave.classList.remove("hidden");
+
+    if (attendanceBtn) attendanceBtn.classList.remove("active");
+    if (leaveBtn) leaveBtn.classList.add("active");
+
+    if (typeof setDefaultLeaveDates === "function") {
+      setDefaultLeaveDates();
+    }
+  } else {
+    leave.classList.add("hidden");
+    attendance.classList.remove("hidden");
+
+    if (leaveBtn) leaveBtn.classList.remove("active");
+    if (attendanceBtn) attendanceBtn.classList.add("active");
+  }
+}
+
 
 let lineUserId = "";
 let employee = null;
@@ -419,6 +449,7 @@ async function loadEmployee() {
     document.getElementById("profile").classList.remove("hidden");
     document.getElementById("workActions").classList.remove("hidden");
     document.getElementById("attendance").classList.remove("hidden");
+    applyPageMode();
     document.getElementById("serverText").textContent = "ระบบพร้อมใช้งาน";
     log("6. Employee loaded ✅");
   } catch(err) {
@@ -789,24 +820,46 @@ function stampAttendancePhoto(
 
 
 function renderSuccess(r) {
-  const late = r.status === "สาย";
+  const late =
+    r.status === "สาย" ||
+    Number(r.lateMinutes || 0) > 0;
+
+  const statusText =
+    late
+      ? "สาย " + Number(r.lateMinutes || 0) + " นาที"
+      : "ตรงเวลา";
+
   const rows = [
-    ["พนักงาน",r.employeeName || "-"],
-    ["วันที่",r.date || "-"],
-    ["เวลาเข้า",(r.checkInTime || "-")+" น."],
-    ["เวลาเข้างาน",(r.scheduledTime || "-")+" น."],
-    ["สถานะ",r.status || "-"],
-    ["สาย",Number(r.lateMinutes || 0)+" นาที"],
-    ["ค่าปรับ",Number(r.fine || 0).toLocaleString("th-TH")+" บาท"]
+    ["พนักงาน", r.employeeName || "-"],
+    ["วันที่", formatThaiDateShort(r.date)],
+    ["เวลาเข้า", (r.checkInTime || "-") + " น."],
+    ["เวลาเข้างาน", (r.scheduledTime || "-") + " น."],
+    ["สถานะ", statusText]
   ];
 
-  const box = document.getElementById("result");
-  box.className = "status show " + (late ? "late" : "ok");
-  document.getElementById("resultTitle").textContent =
-    late ? "🔴 ลงเวลาสำเร็จ — มาสาย" : "✅ ลงเวลาสำเร็จ";
+  const box =
+    document.getElementById("result");
 
-  document.getElementById("resultBody").innerHTML =
-    rows.map(([a,b]) => `<div class="row"><span>${esc(a)}</span><strong>${esc(b)}</strong></div>`).join("");
+  box.className =
+    "status show " +
+    (late ? "late" : "ok");
+
+  document
+    .getElementById("resultTitle")
+    .textContent =
+      late
+        ? "🔴 ลงเวลาสำเร็จ — มาสาย"
+        : "✅ ลงเวลาสำเร็จ";
+
+  document
+    .getElementById("resultBody")
+    .innerHTML =
+      rows
+        .map(
+          ([a,b]) =>
+            `<div class="row"><span>${esc(a)}</span><strong>${esc(b)}</strong></div>`
+        )
+        .join("");
 }
 
 function showProfileError(msg) {
