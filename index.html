@@ -1,8 +1,9 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
+  <!-- BUNJERD_CLOUDFLARE_PROXY_V1 -->
   <!-- BUNJERD_DIRECT_IFRAME_V1 -->
-  <link rel="preconnect" href="https://script.google.com">
+  <link rel="preconnect" href="https://bunjerd-line-webhook.ss-soematerial.workers.dev">
   <link rel="preconnect" href="https://static.line-scdn.net" crossorigin>
   <!-- BUNJERD_LEAVE_APPROVAL_V1 -->
   <meta charset="UTF-8">
@@ -138,7 +139,7 @@
 
 <script>
 const LIFF_ID = "2011542380-TZ4yYBwF";
-const API_URL = "https://script.google.com/macros/s/AKfycbySzi-Zcyq_lObT5DvZfqNQBb1AW3bVc0BeMwv15snK5bSkEnDLiFnuYBpxQMvQQc0h/exec";
+const API_URL = "https://bunjerd-line-webhook.ss-soematerial.workers.dev";
 const pageMode =
   new URLSearchParams(window.location.search).get("mode") || "attendance";
 
@@ -739,7 +740,13 @@ function waitForCheckinResponse(
         const origin =
           String(event.origin || "");
 
-        const googleOrigin =
+        const apiOrigin =
+          new URL(
+            API_URL
+          ).origin;
+
+        const allowedOrigin =
+          origin === apiOrigin ||
           origin ===
             "https://script.google.com" ||
           origin.endsWith(
@@ -748,7 +755,7 @@ function waitForCheckinResponse(
 
         if (
           origin &&
-          !googleOrigin
+          !allowedOrigin
         ) {
           return;
         }
