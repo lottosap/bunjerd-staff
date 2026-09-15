@@ -22,7 +22,7 @@
     .camera{margin-top:12px;min-height:220px;border:1px dashed #555;border-radius:16px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#0a0a0a}#preview{display:none;width:100%;max-height:430px;object-fit:cover}.placeholder{text-align:center;color:#888}
     input[type=file]{display:none}.filebtn{display:block;margin-top:12px;background:#292929;border:1px solid #444;border-radius:12px;padding:13px;text-align:center;font-weight:800}button{width:100%;border:0;border-radius:15px;padding:16px;margin-top:10px;background:var(--accent);font-size:18px;font-weight:900}button:disabled{opacity:.45}
     .status{display:none;margin-top:14px;padding:16px;border:1px solid var(--border);border-radius:16px;background:#101010}.status.show{display:block}.status.ok{border-color:var(--ok)}.status.error,.status.late{border-color:var(--bad)}.title{font-size:20px;font-weight:900;margin-bottom:10px}.row{display:flex;justify-content:space-between;gap:12px;padding:8px 0;border-bottom:1px solid #292929}.row:last-child{border-bottom:0}.row span{color:var(--muted)}.debug{margin-top:12px;background:#0d0d0d;padding:10px;border-radius:10px;color:#aaa;font:12px/1.5 monospace;white-space:pre-wrap;word-break:break-word}.server{margin-top:12px;color:var(--muted);font-size:13px}
-    .mode-switch{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+    .mode-switch{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px}
     .mode-btn{margin:0;background:#252525;color:#ddd;border:1px solid #3a3a3a;font-size:15px;padding:13px}
     .mode-btn.active{background:var(--accent);color:#111;border-color:var(--accent)}
     .field{margin-top:14px}.field label{display:block;color:var(--muted);font-size:12px;margin-bottom:7px}
@@ -30,7 +30,83 @@
     .field textarea{min-height:100px;resize:vertical}
     .leave-result{margin-top:12px}
 
-  </style>
+  
+.modal-backdrop{
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,.74);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  z-index:9999;
+}
+.modal-backdrop.hidden{display:none}
+.modal-card{
+  width:min(100%,440px);
+  max-height:88vh;
+  overflow:auto;
+  background:#151515;
+  border:1px solid #2b2b2b;
+  border-radius:22px;
+  padding:22px;
+  box-shadow:0 18px 60px rgba(0,0,0,.55);
+}
+.modal-icon{
+  width:54px;
+  height:54px;
+  border-radius:50%;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  margin:0 auto 12px;
+  background:#e8a800;
+  color:#111;
+  font-size:28px;
+  font-weight:800;
+}
+.modal-title{
+  text-align:center;
+  font-size:22px;
+  font-weight:800;
+  margin-bottom:8px;
+}
+.modal-sub{
+  text-align:center;
+  color:#a7a7a7;
+  font-size:13px;
+  margin-bottom:16px;
+}
+.modal-body{margin-top:12px}
+.modal-close{margin-top:18px}
+.modal-actions{
+  display:grid;
+  grid-template-columns:1fr 1.4fr;
+  gap:10px;
+  margin-top:18px;
+}
+.secondary-button{
+  background:#2a2a2a !important;
+  color:#fff !important;
+}
+.history-summary{
+  grid-template-columns:repeat(3,1fr) !important;
+}
+.history-line{
+  display:grid;
+  grid-template-columns:1.1fr .8fr 1.2fr;
+  gap:8px;
+  align-items:center;
+  padding:11px 0;
+  border-bottom:1px solid #2b2b2b;
+  font-size:13px;
+}
+.history-line:last-child{border-bottom:none}
+.history-line .right{text-align:right}
+.history-line .late{color:#e8a800;font-weight:700}
+.history-line .ontime{color:#d8d8d8;font-weight:700}
+
+</style>
 </head>
 <body>
 <main class="wrap">
@@ -65,49 +141,49 @@
 
   <section id="workActions" class="hidden">
     <div class="mode-switch">
-      <button id="attendanceModeBtn" class="mode-btn active" type="button">ลงเวลา</button>
+      <button id="attendanceModeBtn" class="mode-btn active" type="button">เข้างาน</button>
       <button id="leaveModeBtn" class="mode-btn" type="button">แจ้งลา</button>
+      <button id="historyModeBtn" class="mode-btn" type="button">เช็คเวลางาน</button>
     </div>
   </section>
 
   <section id="leaveSection" class="card hidden">
     <div class="label">คำขอลา</div>
     <div class="value">แจ้งลา</div>
-    <div class="sub">ส่งคำขอให้แอดมินตรวจสอบ</div>
-
-    <div class="field">
-      <label for="leaveType">ประเภทการลา</label>
-      <select id="leaveType">
-        <option value="">เลือกประเภทการลา</option>
-        <option value="ลากิจ">ลากิจ</option>
-        <option value="ลาป่วย">ลาป่วย</option>
-        <option value="อื่นๆ">อื่นๆ</option>
-      </select>
-    </div>
-
-    <div class="grid">
-      <div class="field">
-        <label for="leaveStartDate">วันที่เริ่มลา</label>
-        <input id="leaveStartDate" type="date">
-      </div>
-      <div class="field">
-        <label for="leaveEndDate">ถึงวันที่</label>
-        <input id="leaveEndDate" type="date">
-      </div>
-    </div>
-
-    <div class="field">
-      <label for="leaveReason">เหตุผล</label>
-      <textarea id="leaveReason" placeholder="ระบุเหตุผลการลา"></textarea>
-    </div>
-
-    <button id="submitLeave" type="button">ส่งคำขอลา</button>
-
-    <div id="leaveResult" class="status leave-result">
-      <div id="leaveResultTitle" class="title"></div>
-      <div id="leaveResultBody"></div>
-    </div>
+    <div class="sub">เลือกวันที่ลาและส่งคำขอให้แอดมินอนุมัติ</div>
+    <button id="openLeaveModal" type="button">เปิดปฏิทินแจ้งลา</button>
+    <div class="note">ไม่มีการเลือกเวลาเริ่ม/สิ้นสุด ใช้เฉพาะวันที่ลา</div>
   </section>
+
+
+  <section id="historySection" class="card hidden">
+    <div class="label">ข้อมูลเวลางานของฉัน</div>
+    <div class="value">เช็คเวลางาน</div>
+    <div class="sub">แสดงเฉพาะรอบค่าแรงปัจจุบัน: 1–10, 11–20 หรือ 21–สิ้นเดือน</div>
+
+    <div id="historyPeriod" class="server" style="margin-top:14px">กำลังตรวจสอบรอบค่าแรง...</div>
+
+    <div id="historySummary" class="grid history-summary" style="margin-top:10px">
+      <div class="mini">
+        <div class="label">วันทำงาน</div>
+        <div id="historyWorkDays" class="value">-</div>
+      </div>
+      <div class="mini">
+        <div class="label">มาสาย</div>
+        <div id="historyLateDays" class="value">-</div>
+      </div>
+      <div class="mini">
+        <div class="label">สายรวม</div>
+        <div id="historyLateMinutes" class="value">-</div>
+      </div>
+    </div>
+
+    <button id="refreshHistory" type="button">รีเฟรชข้อมูล</button>
+
+    <div id="historyStatus" class="server">ยังไม่ได้โหลดข้อมูล</div>
+    <div id="historyList" style="margin-top:12px"></div>
+  </section>
+
 
   <section id="attendance" class="card hidden">
     <div class="label">รูปหลักฐาน</div>
@@ -121,13 +197,57 @@
 
     <button id="checkin" disabled>ลงเวลาเข้างาน</button>
     <div class="note">เวลาอ้างอิงจากเซิร์ฟเวอร์ระบบ และประทับลงบนรูปก่อนบันทึก Google Drive</div>
-
-    <div id="result" class="status">
-      <div id="resultTitle" class="title"></div>
-      <div id="resultBody"></div>
-    </div>
   </section>
 </main>
+
+
+<div id="appModal" class="modal-backdrop hidden" aria-hidden="true">
+  <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="appModalTitle">
+    <div id="appModalIcon" class="modal-icon">✓</div>
+    <div id="appModalTitle" class="modal-title">สำเร็จ</div>
+    <div id="appModalBody" class="modal-body"></div>
+    <button id="appModalClose" class="modal-close" type="button">ตกลง</button>
+  </div>
+</div>
+
+<div id="leaveModal" class="modal-backdrop hidden" aria-hidden="true">
+  <div class="modal-card leave-modal-card" role="dialog" aria-modal="true" aria-labelledby="leaveModalTitle">
+    <div id="leaveModalTitle" class="modal-title">แจ้งลา</div>
+    <div class="modal-sub">เลือกวันที่ลาและกรอกรายละเอียด</div>
+
+    <div class="field">
+      <label for="leaveTypeModal">ประเภทการลา</label>
+      <select id="leaveTypeModal">
+        <option value="">เลือกประเภทการลา</option>
+        <option value="ลากิจ">ลากิจ</option>
+        <option value="ลาป่วย">ลาป่วย</option>
+        <option value="อื่นๆ">อื่นๆ</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="leaveStartDateModal">วันที่เริ่มลา</label>
+      <input id="leaveStartDateModal" type="date">
+    </div>
+
+    <div class="field">
+      <label for="leaveEndDateModal">วันที่สิ้นสุด</label>
+      <input id="leaveEndDateModal" type="date">
+      <div class="note">ถ้าลา 1 วัน ระบบจะใช้วันเดียวกันให้อัตโนมัติ</div>
+    </div>
+
+    <div class="field">
+      <label for="leaveReasonModal">เหตุผล</label>
+      <textarea id="leaveReasonModal" placeholder="ระบุเหตุผลการลา"></textarea>
+    </div>
+
+    <div class="modal-actions">
+      <button id="leaveModalCancel" class="secondary-button" type="button">ยกเลิก</button>
+      <button id="leaveModalSubmit" type="button">ส่งคำขอลา</button>
+    </div>
+  </div>
+</div>
+
 
 <iframe name="uploadFrame" id="uploadFrame" style="display:none"></iframe>
 <form id="uploadForm" method="POST" target="uploadFrame" style="display:none">
@@ -144,29 +264,100 @@ const pageMode =
   new URLSearchParams(window.location.search).get("mode") || "attendance";
 
 function applyPageMode() {
-  const attendanceBtn = document.getElementById("attendanceModeBtn");
-  const leaveBtn = document.getElementById("leaveModeBtn");
-  const attendance = document.getElementById("attendance");
-  const leave = document.getElementById("leaveSection");
+  const attendanceBtn =
+    document.getElementById(
+      "attendanceModeBtn"
+    );
 
-  if (!attendance || !leave) return;
+  const leaveBtn =
+    document.getElementById(
+      "leaveModeBtn"
+    );
+
+  const historyBtn =
+    document.getElementById(
+      "historyModeBtn"
+    );
+
+  const attendance =
+    document.getElementById(
+      "attendance"
+    );
+
+  const leave =
+    document.getElementById(
+      "leaveSection"
+    );
+
+  const history =
+    document.getElementById(
+      "historySection"
+    );
+
+  if (
+    !attendance ||
+    !leave ||
+    !history
+  ) {
+    return;
+  }
+
+  [
+    attendance,
+    leave,
+    history
+  ].forEach(section => {
+    section.classList.add(
+      "hidden"
+    );
+  });
+
+  [
+    attendanceBtn,
+    leaveBtn,
+    historyBtn
+  ].forEach(button => {
+    if (button) {
+      button.classList.remove(
+        "active"
+      );
+    }
+  });
 
   if (pageMode === "leave") {
-    attendance.classList.add("hidden");
-    leave.classList.remove("hidden");
+    leave.classList.remove(
+      "hidden"
+    );
 
-    if (attendanceBtn) attendanceBtn.classList.remove("active");
-    if (leaveBtn) leaveBtn.classList.add("active");
+    leaveBtn.classList.add(
+      "active"
+    );
 
-    if (typeof setDefaultLeaveDates === "function") {
-      setDefaultLeaveDates();
+    setDefaultLeaveDates();
+
+  } else if (
+    pageMode === "history"
+  ) {
+    history.classList.remove(
+      "hidden"
+    );
+
+    historyBtn.classList.add(
+      "active"
+    );
+
+    if (employee) {
+      loadAttendanceHistory();
     }
-  } else {
-    leave.classList.add("hidden");
-    attendance.classList.remove("hidden");
 
-    if (leaveBtn) leaveBtn.classList.remove("active");
-    if (attendanceBtn) attendanceBtn.classList.add("active");
+  } else {
+    attendance.classList.remove(
+      "hidden"
+    );
+
+    attendanceBtn.classList.add(
+      "active"
+    );
   }
 }
 
@@ -180,137 +371,349 @@ const photo = document.getElementById("photo");
 const checkinBtn = document.getElementById("checkin");
 const attendanceModeBtn = document.getElementById("attendanceModeBtn");
 const leaveModeBtn = document.getElementById("leaveModeBtn");
+const historyModeBtn = document.getElementById("historyModeBtn");
 const leaveSection = document.getElementById("leaveSection");
 const attendanceSection = document.getElementById("attendance");
-const submitLeaveBtn = document.getElementById("submitLeave");
+const historySection = document.getElementById("historySection");
+const refreshHistoryBtn = document.getElementById("refreshHistory");
+const openLeaveModalBtn = document.getElementById("openLeaveModal");
+const appModal = document.getElementById("appModal");
+const appModalIcon = document.getElementById("appModalIcon");
+const appModalTitle = document.getElementById("appModalTitle");
+const appModalBody = document.getElementById("appModalBody");
+const appModalClose = document.getElementById("appModalClose");
+const leaveModal = document.getElementById("leaveModal");
+const leaveModalCancel = document.getElementById("leaveModalCancel");
+const leaveModalSubmit = document.getElementById("leaveModalSubmit");
+const leaveTypeModal = document.getElementById("leaveTypeModal");
+const leaveStartDateModal = document.getElementById("leaveStartDateModal");
+const leaveEndDateModal = document.getElementById("leaveEndDateModal");
+const leaveReasonModal = document.getElementById("leaveReasonModal");
 
 attendanceModeBtn.addEventListener("click", () => {
   attendanceModeBtn.classList.add("active");
   leaveModeBtn.classList.remove("active");
+  historyModeBtn.classList.remove("active");
   attendanceSection.classList.remove("hidden");
   leaveSection.classList.add("hidden");
+  historySection.classList.add("hidden");
 });
 
 leaveModeBtn.addEventListener("click", () => {
   leaveModeBtn.classList.add("active");
   attendanceModeBtn.classList.remove("active");
+  historyModeBtn.classList.remove("active");
   leaveSection.classList.remove("hidden");
   attendanceSection.classList.add("hidden");
-  setDefaultLeaveDates();
+  historySection.classList.add("hidden");
+  openLeaveCalendar();
+});
+
+historyModeBtn.addEventListener("click", () => {
+  historyModeBtn.classList.add("active");
+  attendanceModeBtn.classList.remove("active");
+  leaveModeBtn.classList.remove("active");
+  historySection.classList.remove("hidden");
+  attendanceSection.classList.add("hidden");
+  leaveSection.classList.add("hidden");
+  loadAttendanceHistory();
+});
+
+refreshHistoryBtn.addEventListener("click", () => {
+  loadAttendanceHistory();
 });
 
 function setDefaultLeaveDates() {
-  const start = document.getElementById("leaveStartDate");
-  const end = document.getElementById("leaveEndDate");
+  const today =
+    new Date();
 
-  if (!start.value) {
-    const today = new Date();
-    const local = new Date(
+  const local =
+    new Date(
       today.getTime() -
-      today.getTimezoneOffset() * 60000
-    ).toISOString().slice(0,10);
+      today.getTimezoneOffset() *
+      60000
+    )
+    .toISOString()
+    .slice(0, 10);
 
-    start.value = local;
-    end.value = local;
+  if (!leaveStartDateModal.value) {
+    leaveStartDateModal.value =
+      local;
+  }
+
+  if (!leaveEndDateModal.value) {
+    leaveEndDateModal.value =
+      leaveStartDateModal.value ||
+      local;
   }
 }
 
-submitLeaveBtn.addEventListener("click", async () => {
-  if (!employee || !lineUserId) {
-    return showLeaveResult(false, "ไม่พบข้อมูลพนักงาน");
-  }
+function openLeaveCalendar() {
+  setDefaultLeaveDates();
+  leaveModal.classList.remove("hidden");
+  leaveModal.setAttribute(
+    "aria-hidden",
+    "false"
+  );
 
-  const leaveType = document.getElementById("leaveType").value;
-  const startDate = document.getElementById("leaveStartDate").value;
-  const endDate = document.getElementById("leaveEndDate").value;
-  const reason = document.getElementById("leaveReason").value.trim();
+  setTimeout(() => {
+    if (
+      leaveStartDateModal &&
+      typeof leaveStartDateModal.showPicker ===
+        "function"
+    ) {
+      try {
+        leaveStartDateModal.showPicker();
+      } catch (_) {}
+    }
+  }, 120);
+}
 
-  if (!leaveType) {
-    return showLeaveResult(false, "กรุณาเลือกประเภทการลา");
-  }
+function closeLeaveCalendar() {
+  leaveModal.classList.add("hidden");
+  leaveModal.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+}
 
-  if (!startDate || !endDate) {
-    return showLeaveResult(false, "กรุณาเลือกวันที่ลา");
-  }
+openLeaveModalBtn.addEventListener(
+  "click",
+  openLeaveCalendar
+);
 
-  if (startDate > endDate) {
-    return showLeaveResult(false, "วันที่สิ้นสุดต้องไม่น้อยกว่าวันเริ่มลา");
-  }
+leaveModalCancel.addEventListener(
+  "click",
+  closeLeaveCalendar
+);
 
-  if (!reason) {
-    return showLeaveResult(false, "กรุณาระบุเหตุผลการลา");
-  }
-
-  submitLeaveBtn.disabled = true;
-  submitLeaveBtn.textContent = "กำลังส่งคำขอ...";
-
-  try {
-    const result = await api({
-      action: "leave_request",
-      lineUserId,
-      leaveType,
-      startDate,
-      endDate,
-      reason
-    });
-
-    if (!result.success) {
-      showLeaveResult(
-        false,
-        result.message || result.error || "ส่งคำขอลาไม่สำเร็จ"
-      );
-      return;
+leaveStartDateModal.addEventListener(
+  "change",
+  () => {
+    if (
+      !leaveEndDateModal.value ||
+      leaveEndDateModal.value <
+        leaveStartDateModal.value
+    ) {
+      leaveEndDateModal.value =
+        leaveStartDateModal.value;
     }
 
-    showLeaveResult(
-      true,
-      "ส่งคำขอลาแล้ว",
-      [
-        ["ประเภท", result.leaveType || leaveType],
-        ["วันที่", formatLeaveDateRange(startDate, endDate)],
-        ["สถานะ", result.status || "รออนุมัติ"]
-      ]
-    );
-
-    document.getElementById("leaveType").value = "";
-    document.getElementById("leaveReason").value = "";
-
-  } catch (err) {
-    showLeaveResult(
-      false,
-      err.message || String(err)
-    );
-  } finally {
-    submitLeaveBtn.disabled = false;
-    submitLeaveBtn.textContent = "ส่งคำขอลา";
+    leaveEndDateModal.min =
+      leaveStartDateModal.value;
   }
-});
+);
 
-function showLeaveResult(success, message, rows) {
-  const box = document.getElementById("leaveResult");
-  const title = document.getElementById("leaveResultTitle");
-  const body = document.getElementById("leaveResultBody");
+leaveModalSubmit.addEventListener(
+  "click",
+  async () => {
+    if (!employee || !lineUserId) {
+      return showAppModal(
+        false,
+        "ไม่พบข้อมูลพนักงาน",
+        []
+      );
+    }
 
-  box.className = "status show " + (success ? "ok" : "error");
-  title.textContent = success ? "ส่งคำขอลาแล้ว" : "เกิดข้อผิดพลาด";
+    const leaveType =
+      leaveTypeModal.value;
 
-  if (!rows || !rows.length) {
-    body.innerHTML = "<div class='sub'>" + escapeHtml(message || "") + "</div>";
-    return;
+    const startDate =
+      leaveStartDateModal.value;
+
+    const endDate =
+      leaveEndDateModal.value ||
+      startDate;
+
+    const reason =
+      leaveReasonModal.value.trim();
+
+    if (!leaveType) {
+      return showAppModal(
+        false,
+        "กรุณาเลือกประเภทการลา",
+        []
+      );
+    }
+
+    if (!startDate) {
+      return showAppModal(
+        false,
+        "กรุณาเลือกวันที่ลา",
+        []
+      );
+    }
+
+    if (startDate > endDate) {
+      return showAppModal(
+        false,
+        "วันที่สิ้นสุดต้องไม่น้อยกว่าวันเริ่มลา",
+        []
+      );
+    }
+
+    if (!reason) {
+      return showAppModal(
+        false,
+        "กรุณาระบุเหตุผลการลา",
+        []
+      );
+    }
+
+    leaveModalSubmit.disabled =
+      true;
+
+    leaveModalSubmit.textContent =
+      "กำลังส่ง...";
+
+    try {
+      const result =
+        await api({
+          action:
+            "leave_request",
+          lineUserId,
+          leaveType,
+          startDate,
+          endDate,
+          reason
+        });
+
+      if (!result.success) {
+        closeLeaveCalendar();
+
+        showAppModal(
+          false,
+          result.message ||
+            result.error ||
+            "ส่งคำขอลาไม่สำเร็จ",
+          []
+        );
+
+        return;
+      }
+
+      closeLeaveCalendar();
+
+      const rows = [
+        [
+          "ประเภท",
+          result.leaveType ||
+            leaveType
+        ],
+        [
+          "วันที่",
+          formatLeaveDateRange(
+            startDate,
+            endDate
+          )
+        ],
+        [
+          "สถานะ",
+          result.status ||
+            "รออนุมัติ"
+        ]
+      ];
+
+      if (
+        result.adminGroupNotification &&
+        result.adminGroupNotification.success ===
+          false
+      ) {
+        showAppModal(
+          false,
+          "บันทึกคำขอลาแล้ว แต่แจ้งแอดมินไม่สำเร็จ กรุณาแจ้งหัวหน้างาน",
+          rows
+        );
+      } else {
+        showAppModal(
+          true,
+          "ส่งคำขอลาแล้ว",
+          rows
+        );
+      }
+
+      leaveTypeModal.value =
+        "";
+
+      leaveReasonModal.value =
+        "";
+
+    } catch (err) {
+      closeLeaveCalendar();
+
+      showAppModal(
+        false,
+        err.message ||
+          String(err),
+        []
+      );
+
+    } finally {
+      leaveModalSubmit.disabled =
+        false;
+
+      leaveModalSubmit.textContent =
+        "ส่งคำขอลา";
+    }
   }
+);
 
-  body.innerHTML =
-    "<div class='sub' style='margin-bottom:8px'>" +
-    escapeHtml(message || "") +
-    "</div>" +
-    rows.map(r =>
-      "<div class='row'><span>" +
-      escapeHtml(r[0]) +
-      "</span><strong>" +
-      escapeHtml(r[1]) +
-      "</strong></div>"
-    ).join("");
+function showAppModal(
+  success,
+  title,
+  rows
+) {
+  appModalIcon.textContent =
+    success
+      ? "✓"
+      : "!";
+
+  appModalIcon.style.background =
+    success
+      ? "#E8A800"
+      : "#C94B4B";
+
+  appModalTitle.textContent =
+    title || "";
+
+  const dataRows =
+    Array.isArray(rows)
+      ? rows
+      : [];
+
+  appModalBody.innerHTML =
+    dataRows
+      .map(
+        row =>
+          `<div class="row"><span>${escapeHtml(row[0])}</span><strong>${escapeHtml(row[1])}</strong></div>`
+      )
+      .join("");
+
+  appModal.classList.remove(
+    "hidden"
+  );
+
+  appModal.setAttribute(
+    "aria-hidden",
+    "false"
+  );
 }
+
+function closeAppModal() {
+  appModal.classList.add(
+    "hidden"
+  );
+
+  appModal.setAttribute(
+    "aria-hidden",
+    "true"
+  );
+}
+
+appModalClose.addEventListener(
+  "click",
+  closeAppModal
+);
 
 function formatLeaveDateRange(startDate, endDate) {
   if (startDate === endDate) return formatThaiDateShort(startDate);
@@ -350,6 +753,158 @@ function log(s) {
  * This avoids CORS/redirect problems between GitHub Pages
  * and Google Apps Script ContentService.
  */
+
+
+async function loadAttendanceHistory() {
+  if (
+    !lineUserId ||
+    !employee
+  ) {
+    return;
+  }
+
+  const status =
+    document.getElementById(
+      "historyStatus"
+    );
+
+  const list =
+    document.getElementById(
+      "historyList"
+    );
+
+  const period =
+    document.getElementById(
+      "historyPeriod"
+    );
+
+  refreshHistoryBtn.disabled =
+    true;
+
+  refreshHistoryBtn.textContent =
+    "กำลังโหลด...";
+
+  status.textContent =
+    "กำลังโหลดข้อมูลเวลางาน...";
+
+  list.innerHTML =
+    "";
+
+  try {
+    const result =
+      await api({
+        action:
+          "attendance_history",
+        lineUserId
+      });
+
+    if (!result.success) {
+      throw new Error(
+        result.message ||
+        result.error ||
+        "โหลดข้อมูลไม่สำเร็จ"
+      );
+    }
+
+    const summary =
+      result.summary || {};
+
+    document.getElementById(
+      "historyWorkDays"
+    ).textContent =
+      String(
+        summary.workDays || 0
+      );
+
+    document.getElementById(
+      "historyLateDays"
+    ).textContent =
+      String(
+        summary.lateDays || 0
+      );
+
+    document.getElementById(
+      "historyLateMinutes"
+    ).textContent =
+      String(
+        summary.totalLateMinutes || 0
+      ) +
+      " นาที";
+
+    period.textContent =
+      "รอบ " +
+      formatThaiDateShort(
+        result.periodStart
+      ) +
+      " – " +
+      formatThaiDateShort(
+        result.periodEnd
+      );
+
+    const rows =
+      Array.isArray(
+        result.rows
+      )
+        ? result.rows
+        : [];
+
+    if (
+      rows.length === 0
+    ) {
+      status.textContent =
+        "ยังไม่มีข้อมูลลงเวลาในรอบนี้";
+
+      list.innerHTML =
+        '<div class="mini">ยังไม่มีรายการ</div>';
+
+      return;
+    }
+
+    status.textContent =
+      "ข้อมูลในรอบปัจจุบัน";
+
+    list.innerHTML =
+      `<div class="mini">` +
+      rows.map(row => {
+        const late =
+          Number(
+            row.lateMinutes || 0
+          );
+
+        const statusText =
+          late > 0
+            ? (
+                "สาย " +
+                late +
+                " นาที"
+              )
+            : "ตรงเวลา";
+
+        return `
+          <div class="history-line">
+            <div>${escapeHtml(formatThaiDateShort(row.date))}</div>
+            <div>${escapeHtml(row.checkInTime || "-")}</div>
+            <div class="right ${late > 0 ? "late" : "ontime"}">${escapeHtml(statusText)}</div>
+          </div>
+        `;
+      }).join("") +
+      `</div>`;
+
+  } catch (err) {
+    status.textContent =
+      err.message ||
+      String(err);
+
+  } finally {
+    refreshHistoryBtn.disabled =
+      false;
+
+    refreshHistoryBtn.textContent =
+      "รีเฟรชข้อมูล";
+  }
+}
+
+
 function api(params) {
   return new Promise((resolve, reject) => {
     const callbackName =
@@ -455,6 +1010,12 @@ async function loadEmployee() {
     document.getElementById("workActions").classList.remove("hidden");
     document.getElementById("attendance").classList.remove("hidden");
     applyPageMode();
+    if (pageMode === "leave") {
+      setTimeout(
+        openLeaveCalendar,
+        120
+      );
+    }
     document.getElementById("serverText").textContent = "ระบบพร้อมใช้งาน";
     log("6. Employee loaded ✅");
   } catch(err) {
@@ -802,44 +1363,17 @@ function waitForCheckinResponse(
 async function recoverCheckinResult(
   requestId
 ) {
-  // Recovery only when postMessage was not received.
-  // Maximum two lightweight reads; this is not continuous polling.
-  for (
-    let attempt = 0;
-    attempt < 2;
-    attempt++
+  const result =
+    await api({
+      action: "result",
+      requestId
+    });
+
+  if (
+    result &&
+    !result.pending
   ) {
-    try {
-      const result =
-        await api({
-          action: "result",
-          requestId
-        });
-
-      if (
-        result &&
-        !result.pending
-      ) {
-        return result;
-      }
-
-    } catch (err) {
-      log(
-        "Recovery attempt " +
-        (attempt + 1) +
-        " failed"
-      );
-    }
-
-    if (attempt === 0) {
-      await new Promise(
-        resolve =>
-          setTimeout(
-            resolve,
-            1800
-          )
-      );
-    }
+    return result;
   }
 
   throw new Error(
@@ -1035,44 +1569,53 @@ function stampAttendancePhoto(
 function renderSuccess(r) {
   const late =
     r.status === "สาย" ||
-    Number(r.lateMinutes || 0) > 0;
+    Number(
+      r.lateMinutes || 0
+    ) > 0;
 
   const statusText =
     late
-      ? "สาย " + Number(r.lateMinutes || 0) + " นาที"
+      ? (
+          "สาย " +
+          Number(
+            r.lateMinutes || 0
+          ) +
+          " นาที"
+        )
       : "ตรงเวลา";
 
-  const rows = [
-    ["พนักงาน", r.employeeName || "-"],
-    ["วันที่", formatThaiDateShort(r.date)],
-    ["เวลาเข้า", (r.checkInTime || "-") + " น."],
-    ["เวลาเข้างาน", (r.scheduledTime || "-") + " น."],
-    ["สถานะ", statusText]
-  ];
-
-  const box =
-    document.getElementById("result");
-
-  box.className =
-    "status show " +
-    (late ? "late" : "ok");
-
-  document
-    .getElementById("resultTitle")
-    .textContent =
-      late
-        ? "🔴 ลงเวลาสำเร็จ — มาสาย"
-        : "✅ ลงเวลาสำเร็จ";
-
-  document
-    .getElementById("resultBody")
-    .innerHTML =
-      rows
-        .map(
-          ([a,b]) =>
-            `<div class="row"><span>${esc(a)}</span><strong>${esc(b)}</strong></div>`
+  showAppModal(
+    true,
+    late
+      ? "ลงเวลาสำเร็จ — มาสาย"
+      : "ลงเวลาสำเร็จ",
+    [
+      [
+        "พนักงาน",
+        r.employeeName || "-"
+      ],
+      [
+        "วันที่",
+        formatThaiDateShort(
+          r.date
         )
-        .join("");
+      ],
+      [
+        "เวลาเข้า",
+        (r.checkInTime || "-") +
+          " น."
+      ],
+      [
+        "เวลาเข้างาน",
+        (r.scheduledTime || "-") +
+          " น."
+      ],
+      [
+        "สถานะ",
+        statusText
+      ]
+    ]
+  );
 }
 
 function showProfileError(msg) {
@@ -1082,10 +1625,16 @@ function showProfileError(msg) {
 }
 
 function showResultError(msg) {
-  const box = document.getElementById("result");
-  box.className = "status show error";
-  document.getElementById("resultTitle").textContent = "⚠️ ไม่สามารถลงเวลาได้";
-  document.getElementById("resultBody").innerHTML = "<div>"+esc(msg)+"</div>";
+  showAppModal(
+    false,
+    "ไม่สามารถลงเวลาได้",
+    [
+      [
+        "รายละเอียด",
+        msg || "-"
+      ]
+    ]
+  );
 }
 
 function esc(s) {
